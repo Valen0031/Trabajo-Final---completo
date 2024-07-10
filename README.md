@@ -20,9 +20,9 @@ satis_dem = Satisfacción de los peruanos con la democracia en el 2023
 
 creencias = ¿Qué frase refleja las creencias de los peruanos en el 2023 con respecto a la gobernabilidad?
 -	Unidad de análisis: peruanos encuestados sobre las creencias sobre la gobernabilidad
-1.	For people like me, it doesn’t matter whether we have a democratic or non-democratic regime 
+1.	Democracy is preferable to any other kind of government
 2.	Under some circumstances, an authoritarian government can be preferable to a democratic one
-3.	Democracy is preferable to any other kind of government
+3.	For people like me, it doesn’t matter whether we have a democratic or non-democratic regime
 
 
 
