@@ -1,0 +1,780 @@
+---
+title: '1406'
+author: "Valentina Nauchi"
+date: "2024-06-14"
+output: html_document
+---
+
+```{r}
+setwd("C:/Trabajo grupal Tucaloza y Valentini")
+```
+
+#Exportamos la data 
+```{r}
+library(rio)
+data1 = import("Latinobarometro2023.rdata")
+```
+
+```{r}
+data1$idenpa=as.factor(data1$idenpa)
+data1$idenpa=factor(data1$idenpa,
+                levels = levels(data1$idenpa),
+                labels = c("Argentina", "Bolivia", "Brasil", "Colombia", "Costa Rica" , "Chile" , "Ecuador", "El Salvador", "Guatemala", "Honduras", "México", "Nicaragua", "Panamá", "Paraguay", "Perú", "Uruguay", "Venezuela"),
+                ordered = F)
+```
+
+Filtramos para tener solamente los datos de PERÚ
+
+```{r}
+library(dplyr)
+peru <- data1 %>%
+filter(idenpa=="Perú")
+```
+
+```{r}
+names(peru)=gsub(pattern = "NUMENTRE",
+replacement = "NumEntre",x = names(peru))
+```
+
+Ahora: Renombramos las variables y nos quedamos con los datos de nuestro interés 
+
+#VARIABLES INDEPENDIENTES 
+Satisfacción con la democracia 
+```{r}
+names(peru)=gsub(pattern = "P11STGBS.A",
+                           replacement = "satis_dem",
+                           x = names(peru))
+```
+
+```{r}
+table(peru$satis_dem)
+```
+```{r}
+library(dplyr)
+peru = peru %>%
+  filter(satis_dem %in% c(1,2,3,4))
+```
+
+```{r}
+table(peru$satis_dem)
+```
+Creencias 
+
+```{r}
+names(peru)=gsub(pattern = "P10STGB",
+                           replacement = "creencias",
+                           x = names(peru))
+```
+
+
+```{r}
+library(dplyr)
+peru = peru %>%
+  filter(creenciasS %in% c(1,2,3))
+```
+
+#VARIABLES DE CONTROL 
+#ETNIA 
+
+```{r}
+names(peru)=gsub(pattern = "S7",
+                           replacement = "etnia",
+                           x = names(peru))
+```
+
+```{r}
+library(dplyr)
+peru = peru %>%
+  filter(etnia %in% c(2,3,4,6))
+table(peru$etnia)
+```
+
+
+#CLASE SOCIAL - ESTRATO
+```{r}
+names(peru)=gsub(pattern = "S2",
+                           replacement = "estrato",
+                           x = names(peru))
+```
+
+```{r}
+library(dplyr)
+peru = peru %>%
+  filter(estrato %in% c(1,2,3,4,5))
+table(peru$estrato)
+```
+
+#PARTIDO POLITICO - FAMPART
+#En el caso de esta variable, al tener muchas categorías lo que estamos haciendo es separar los datos en "Si se identidifica con un partido político" = 1, "No se identifica con ningún partido político" = 0
+
+```{r}
+names(peru)=gsub(pattern = "fampart",
+                           replacement = "partido_pol",
+                           x = names(peru))
+```
+
+```{r}
+table(peru$partido_pol)
+```
+
+
+```{r}
+library(dplyr)
+peru = peru %>%
+  filter(partido_pol %in% c(0,20,30,40,50,60,70,80,98))
+```
+
+```{r}
+table(peru$partido_pol)
+```
+
+Ya que esta variable tiene muchas categorías, haremos una condición: Si pertene a un partido político será 1 de lo contrario será  0 
+```{r}
+peru$partido_pol <- ifelse(peru$partido_pol != 0, 1, 0)
+table(peru$partido_pol)
+```
+
+
+#VARIABLE DEPENDIENTE - CONFIANZA EN LAS INSTITUCIONES 
+```{r}
+names(peru)=gsub(pattern = "P13ST.D",
+                           replacement = "Congreso",
+                           x = names(peru))
+```
+
+```{r}
+names(peru)=gsub(pattern = "P13ST.E",
+                           replacement = "Gobierno",
+                           x = names(peru))
+```
+
+```{r}
+names(peru)=gsub(pattern = "P13ST.G",
+                           replacement = "Partidos_Politicos",
+                           x = names(peru))
+```
+
+```{r}
+names(peru)=gsub(pattern = "P13ST.I",
+                           replacement = "Presidente",
+                           x = names(peru))
+```
+
+#DATOS PERDIDOS 
+```{r}
+total_na <- sum(is.na(peru))
+print(paste("Total de valores NA:", total_na))
+```
+
+```{r}
+table(peru$Congreso)
+```
+```{r}
+library(dplyr)
+peru = peru %>%
+  filter(Congreso %in% c(1,2,3,4))
+table(peru$Congreso)
+```
+```{r}
+table(peru$Gobierno)
+```
+```{r}
+library(dplyr)
+peru = peru %>%
+  filter(Gobierno %in% c(1,2,3,4))
+table(peru$Gobierno)
+```
+```{r}
+table(peru$Partidos_Politicos)
+```
+```{r}
+library(dplyr)
+peru = peru %>%
+  filter(Partidos_Politicos %in% c(1,2,3,4))
+table(peru$Partidos_Politicos)
+```
+
+```{r}
+table(peru$Presidente)
+```
+```{r}
+library(dplyr)
+peru = peru %>%
+  filter(Presidente %in% c(1,2,3,4))
+table(peru$Presidente)
+```
+
+```{r}
+library(writexl)
+
+MIPAIS <- peru [,c("numentre","satis_dem", "creenciasS", "etnia", "estrato", "partido_pol", "Congreso", "Gobierno", "Partidos_Politicos", "Presidente")]
+```
+
+
+#EFA 2 
+
+```{r}
+names(MIPAIS)
+```
+
+```{r}
+dontselect=c("numentre","satis_dem","creenciasS","etnia","estrato", "partido_pol")
+select=setdiff(names(MIPAIS),dontselect) 
+DF=MIPAIS[,select]
+
+# usaremos:
+library(magrittr)
+head(DF,10)%>%
+    rmarkdown::paged_table()
+```
+#Calculemos las correlaciones entre todas las variables
+
+```{r}
+DF$Congreso= as.numeric(DF$Congreso)
+DF$Gobierno= as.numeric(DF$Gobierno)
+DF$Partidos_Politicos= as.numeric(DF$Partidos_Politicos)
+DF$Presidente= as.numeric(DF$Presidente)
+```
+
+```{r}
+library(polycor)
+```
+
+```{r}
+corMatrix=polycor::hetcor(DF)$correlations
+```
+
+```{r}
+round(corMatrix,2)
+```
+```{r}
+library(ggcorrplot)
+
+ggcorrplot(corMatrix)
+```
+
+```{r}
+library(psych)
+psych::KMO(corMatrix) 
+```
+```{r}
+cortest.bartlett(corMatrix,n=nrow(DF))$p.value>0.05
+```
+```{r}
+library(matrixcalc)
+
+is.singular.matrix(corMatrix)
+```
+
+```{r}
+fa.parallel(DF, fa = 'fa',correct = T,plot = F)
+```
+
+
+```{r}
+library(GPArotation)
+resfa <- fa(DF,
+            nfactors = 1,
+            cor = 'mixed',
+            rotate = "varimax", #oblimin?
+            fm="minres")
+print(resfa$loadings)
+```
+
+```{r}
+sort(resfa$communality)
+```
+```{r}
+regresFactors=as.data.frame(resfa$scores)%>%head()
+```
+
+
+```{r}
+MIPAIS$confianza_instituciones <- resfa$scores
+
+head(MIPAIS)
+
+```
+
+```{r}
+names(MIPAIS)=gsub(pattern = "confianza_instituciones",
+                           replacement = "conf_inst",
+                           x = names(MIPAIS))
+```
+
+
+#Rescale confianza en las instituciones 
+
+```{r}
+range(MIPAIS$conf_inst, na.rm = TRUE)
+
+MIPAIS$confianza <- cut(
+  MIPAIS$conf_inst,
+  breaks = 10,                    # Dividir en 10 categorías
+  labels = 1:10,                  # Etiquetar las categorías del 1 al 10
+  include.lowest = TRUE           # Incluir el valor mínimo en la primera categoría
+)
+
+# Convertir a numérica si es necesario
+MIPAIS$confianza <- as.numeric(as.character(MIPAIS$confianza))
+
+# Verificar los primeros registros para asegurarse de que la recategorización funcionó
+head(MIPAIS[, c("conf_inst", "confianza")])
+
+```
+
+```{r}
+table(MIPAIS$confianza)
+```
+
+#Crear una columna que indique: Si el puntaje es >=7 sí confia (1) de lo contrario no confía (0)
+```{r}
+MIPAIS$confia <- ifelse(MIPAIS$confianza >= 7, "1", "0")
+
+head(MIPAIS[, c("confianza", "confia")])
+```
+
+
+
+library(writexl)
+write_xlsx(MIPAIS, "MiPais-Completo.xlsx")
+
+
+```{r}
+library(writexl)
+
+DATAFINAL <- MIPAIS [,c("numentre","satis_dem", "creenciasS", "etnia", "estrato", "partido_pol", "confianza", "confia")]
+```
+
+Descargamos nuestra data final para realizar nuestras regresiones 
+
+```{r}
+write_xlsx(DATAFINAL, "perufinal.xlsx")
+```
+
+
+#REGRESIÓN LINEAL MULTIPLE 
+
+```{r}
+library(rio)
+PERU= import("perufinal.xlsx")
+```
+
+```{r}
+str(PERU)
+```
+
+#Hacemos un summary de nuestra variable de interes "Confianza"
+
+```{r}
+summary(PERU$confianza)
+```
+
+```{r}
+library(DescTools)
+
+allStats=c(summary(PERU$confianza),
+  sd=sd(PERU$confianza),
+  skew=Skew(PERU$confianza),
+  kurt=Kurt(PERU$confianza),
+  cv=CoefVar(PERU$confianza))
+allStats
+```
+```{r}
+library(ggplot2)
+
+base=ggplot(data=PERU,
+            aes(x=confianza))
+histogram= base + geom_histogram(aes(y = after_stat(density)),
+                 colour = 1, fill = "pink",bins=10) +  
+    stat_function(fun = dnorm,
+                  args = list(mean = allStats['Mean'],
+                              sd = allStats['sd']),col='red')
+    
+histogram
+
+```
+#PARA CORRELACIÓN, VERIFICAMOS QUE NUESTRAS VARIABLES SEAN NUMERICAS 
+
+#GRAFICOS DE CORRELACIÓN CON ANOVA 
+
+Tenemos 1 variable dependiente que es CONFIANZA EN LAS INSTITUCIOENS, y las dos variables independientes son CATEGORICAS, CREENCIAS Y SATIS_DEM. En ese caso utilizaremos, un prueba de ANOVA para ver la diferencia de medias entre los grupos. 
+
+```{r}
+# ANOVA para satisfacción con la democracia
+anova_satis_dem <- aov(confianza ~ satis_dem, data = PERU)
+summary(anova_satis_dem)
+
+```
+```{r}
+anova_creenciasS <- aov(confianza ~ creenciasS, data = PERU)
+summary(anova_creenciasS)
+```
+
+#PARA GRAFICOS 
+```{r}
+# Calcular las medias y errores estándar
+df_summary_satis <- PERU %>%
+  group_by(satis_dem) %>%
+  summarise(
+    mean_confianza = mean(confianza, na.rm = TRUE),
+    se_confianza = sd(confianza, na.rm = TRUE) / sqrt(n())
+  )
+
+df_summary_creencias <- PERU %>%
+  group_by(creenciasS) %>%
+  summarise(
+    mean_confianza = mean(confianza, na.rm = TRUE),
+    se_confianza = sd(confianza, na.rm = TRUE) / sqrt(n())
+  )
+```
+
+
+```{r}
+# Gráfico de barras para satisfacción con la democracia
+ggplot(df_summary_satis, aes(x = satis_dem, y = mean_confianza)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_errorbar(aes(ymin = mean_confianza - se_confianza, ymax = mean_confianza + se_confianza), width = 0.2) +
+  theme_minimal() +
+  labs(title = "Media de la Confianza por Satisfacción con la Democracia",
+       x = "Satisfacción con la Democracia",
+       y = "Media de la Confianza")+scale_y_continuous(limits = c(0, max(df_summary_satis$mean_confianza + df_summary_satis$se_confianza) * 1.1))
+
+```
+
+
+```{r}
+# Gráfico de barras para creencias
+ggplot(df_summary_creencias, aes(x = creenciasS, y = mean_confianza)) +
+  geom_bar(stat = "identity", fill = "pink") +
+  geom_errorbar(aes(ymin = mean_confianza - se_confianza, ymax = mean_confianza + se_confianza), width = 0.2) +
+  theme_minimal() +
+  labs(title = "Media de la Confianza por Creencias",
+       x = "Creencias",
+       y = "Media de la Confianza")+scale_y_continuous(limits = c(0, max(df_summary_creencias$mean_confianza + df_summary_creencias$se_confianza) * 1.1))
+```
+#trataremos a las variable satis_dem como numerica a partir de ahora 
+
+```{r}
+class(PERU$satis_dem)
+```
+```{r}
+summary(PERU$satis_dem)
+```
+
+
+```{r}
+# hipotesis en R
+modelo1=formula(confianza~ satis_dem + creenciasS + etnia + estrato + partido_pol)
+```
+
+```{r}
+reg1=lm(modelo1,data=PERU)
+```
+
+
+#LINEALIDAD
+
+```{r}
+# linea roja debe tender a horizontal
+plot(reg1, 1)
+```
+
+#HOMOCEDASTICIDAD 
+```{r}
+# linea roja debe tender a horizontal
+plot(reg1, 3)
+```
+
+```{r}
+library(lmtest)
+# null: modelo homocedastico
+resBP=bptest(reg1)
+data.frame(list('BP'=resBP$statistic,
+             'df'=resBP$parameter,
+             "p-value"=resBP$p.value))
+```
+
+#NORMALIDAD DE RESIDUOS
+```{r}
+# puntos cerca a la diagonal?
+plot(reg1, 2)
+```
+
+```{r}
+#NULL: Datos se distribuyen de manera normal
+resSW=shapiro.test(reg1$residuals)
+data.frame(list('SW'=resSW$statistic,
+             "p-value"=resSW$p.value))
+```
+
+
+#NO MULTUCOLINEALIDAD
+```{r}
+library(DescTools)
+# > 5 es problematico
+VIF(reg1) 
+```
+
+
+#VALORES INFLUYENTES
+```{r}
+plot(reg1, 5)
+```
+
+
+```{r}
+checkReg2=as.data.frame(influence.measures(reg1)$is.inf)
+checkReg2[checkReg2$cook.d & checkReg2$hat,c('cook.d','hat')]
+```
+
+
+Lo que queremos ver en esta regresión es que tanto influyen las variables independientes en la confianza en las instituciones. Entonces tomaremos satis_dem , creenciasS, etnia, estrato, partido_pol
+```{r}
+str(PERU)
+```
+
+
+```{r}
+PERU=PERU[complete.cases(PERU),]
+```
+
+
+```{r}
+seleccion=c("creenciasS","etnia","estrato",
+            "partido_pol","confia")
+PERU[,seleccion]=lapply(PERU[,seleccion],as.factor)
+```
+
+
+```{r}
+peruStats=summary(PERU[,-1])
+peruStats
+```
+
+```{r}
+reg1=lm(modelo1,data=PERU)
+summary(reg1)
+```
+
+```{r}
+library(ggplot2)
+library(broom)
+library(dotwhisker)
+
+model_tidy <- tidy(reg1)
+
+dwplot(model_tidy) +
+  theme_minimal() +
+  labs(title = "Coeficientes del Modelo de Regresión",
+       x = "Estimación",
+       y = "Predictor")
+
+```
+
+
+#REGRESIÓN LOGÍSTICA 
+
+#DICOTOMIZANDO LA SATISFACCIÓN A SATISFECHO Y NO SATISFECHO 
+```{r}
+library(dplyr)
+
+# Suponiendo que tu data frame se llama peru_data
+PERU <- PERU %>%
+  mutate(satisdem_dic = if_else(satis_dem %in% c(3, 4), 1, 0))
+
+# Ver los primeros registros para verificar
+head(PERU)
+
+```
+```{r}
+table(PERU$satisdem_dic)
+```
+```{r}
+PERU$satisdem_dic = factor(PERU$satisdem_dic, levels =c(0:1), labels = c('No está satisfecho', 'Está satisfecho'))
+```
+
+```{r}
+table(PERU$satisdem_dic)
+```
+
+
+
+#DICOTOMIZANDO ESTRATO A CLASE ALTA Y CLASE BAJA 
+Si es Clase Alta = 1 y si es Clase Baja=0 
+
+```{r}
+table(PERU$estrato)
+```
+```{r}
+PERU <- PERU %>%
+  mutate(estrato_dic = if_else(estrato %in% c(1,2), 1, 0))
+table(PERU$estrato_dic)
+```
+#DICOTOMIZANDO CREENCIAS 
+Si cree que la democracia es la mejor forma de gobierno será 1 de lo contrario será 0
+
+```{r}
+table(PERU$creenciasS)
+```
+
+```{r}
+PERU <- PERU %>%
+  mutate(creencias_dic = if_else(creenciasS %in% c(1), 1, 0))
+table(PERU$creencias_dic)
+```
+```{r}
+PERU$creencias_dic = factor(PERU$creencias_dic, levels =c(0:1), labels = c('No cree', 'Sí cree'))
+```
+
+
+#ETNIA LA DEJAREMOS COMO TAL 
+
+```{r}
+table(PERU$etnia)
+```
+```{r}
+PERU$etnia = as.factor(PERU$etnia)
+```
+
+
+```{r}
+library(tidyverse)
+library(car)
+```
+
+#CORRELACION ENTRE LAS VARIABLES 
+
+#HAREMOS CHI CUADRADO 
+```{r}
+# Convertir las variables a factores
+PERU$confia <- as.factor(PERU$confia)
+PERU$satisdem_dic <- as.factor(PERU$satisdem_dic)
+PERU$creencias_dic <- as.factor(PERU$creencias_dic)
+
+# Tabla de contingencia y prueba de Chi-cuadrado para satisfacción con la democracia
+tabla_satisfaccion <- table(PERU$satisdem_dic,PERU$confia)
+chi_satisfaccion <- chisq.test(tabla_satisfaccion)
+chi_satisfaccion
+
+# Tabla de contingencia y prueba de Chi-cuadrado para creencias
+tabla_creencias <- table(PERU$creencias_dic, PERU$confia)
+chi_creencias <- chisq.test(tabla_creencias)
+chi_creencias
+
+```
+
+
+```{r}
+# Resultados para satisfacción con la democracia
+print(chi_satisfaccion)
+
+# Resultados para creencias
+print(chi_creencias)
+```
+
+Interptetamos -> Rechazamos la hipótesis nula (No hay asociación) y concluimos que existe una asociación significativa entre las variables. 
+GRAFICAMOS...
+
+```{r}
+# Convertir tabla de contingencia en un dataframe
+df_satis_dem <- as.data.frame(tabla_satisfaccion)
+colnames(df_satis_dem) <- c("Satisfaccion", "Confianza", "Frecuencia")
+
+# Gráfico de barras apiladas
+ggplot(df_satis_dem, aes(x = Satisfaccion, y = Frecuencia, fill = Confianza)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Distribución de Confianza por Satisfacción con la Democracia",
+       x = "Satisfacción con la Democracia",
+       y = "Frecuencia") +
+  scale_fill_manual(values = c("red", "skyblue")) # Ajustar colores si es necesario
+
+
+```
+
+```{r}
+# Convertir tabla de contingencia en un dataframe
+df_creencias <- as.data.frame(tabla_creencias)
+colnames(df_creencias) <- c("Creencias", "Confianza", "Frecuencia")
+
+# Gráfico de barras apiladas
+ggplot(df_creencias, aes(x = Creencias, y = Frecuencia, fill = Confianza)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Distribución de Confianza por Creencias",
+       x = "Creencias",
+       y = "Frecuencia") +
+  scale_fill_manual(values = c("red", "skyblue")) # Ajustar colores si es necesario
+
+```
+
+```{r}
+library(car)
+modelo <- glm(confia ~ satisdem_dic + creencias_dic + estrato_dic + partido_pol + etnia, 
+              data = PERU, family = binomial)
+
+# Resumen del modelo
+summary(modelo)
+
+```
+```{r}
+exp(coef(modelo))
+```
+#PARA LA ETNIA
+```{r}
+dep=PERU$confia # a la fila
+ind=PERU$etnia # a la columna
+
+volsexTable=table(dep,ind,dnn = c('confia','etnia'))
+library(kableExtra)
+### suma por fila y columna
+addmargins(volsexTable)%>%
+    kable(caption = "Tabla de Contingencia: 'Confía' y 'Etnia'")%>%
+    kableExtra::kable_styling(full_width = F)
+```
+2: BLACK 
+3: INDIGENOUS
+4: MESTIZO 
+6: WHITE
+
+
+#EFECTOS MARGINALES 
+
+```{r}
+library(margins)
+library(kableExtra)
+marginalsData=summary(margins(modelo))
+marginalsData%>% kable(caption = "Efectos Marginales Promedio (AME)") %>%kableExtra::kable_styling(full_width = T)
+
+```
+
+```{r}
+library(ggplot2)
+base= ggplot(marginalsData,aes(x=factor, y=AME)) + geom_point()
+base +  geom_errorbar(aes(ymin=lower, ymax=upper))
+```
+#SI EL COVARIADO INCLUYE A CERO NO SERÁ SIGNIFICATIVO 
+
+```{r}
+names(PERU)
+```
+
+```{r}
+# Instalar y cargar la librería writexl si aún no lo has hecho
+# install.packages("writexl")
+library(writexl)
+
+# Seleccionar las columnas deseadas
+Last <- PERU[, c("numentre", "satis_dem", "creenciasS", "etnia", "estrato", "partido_pol", "confianza", "confia", "satisdem_dic", "estrato_dic", "creencias_dic")]
+
+# Guardar el dataframe en un archivo Excel
+write_xlsx(Last, path = "C:/Trabajo grupal Tucaloza y Valentini/F00017014-Latinobarometro_2023_Rdata_v1_0.xlsx")
+
+```
+
+
+
+
+
+
