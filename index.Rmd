@@ -1,0 +1,507 @@
+---
+title: "Análisis de la confianza en las instituciones del Perú 2023 - Por Micaela Loza y Valentina Nauchi"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(rio)
+```
+
+```{r}
+setwd("C:/Users/USUARIO/Documents/2024-1/Trabajo estadística/TRABAJO FINAL FINAL")
+```
+
+```{r}
+PERÚ =import("Data Final - Dash.xlsx")
+```
+
+INTRODUCCIÓN {data-icon="fa-signal"}
+===================================== 
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+### Variables
+
+```{r}
+library(dplyr)
+library(knitr)
+variables <- data.frame(
+  Tipo = c(rep("Dependiente", 1), rep("Independientes", 2), rep("Control", 3)),
+  Variable = c("confianza", "satis_dem", "creenciasS", "estrato", "etnia", "partido_pol")
+)
+
+variables %>%
+  kable(caption = "Clasificación de Variables")
+```
+
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+### Pregunta de investigación e Hipótesis
+
+¿Cuáles son los determinantes del nivel de confianza en las instituciones públicas en el Perú en 2023?
+
+Si bien las creencias influyen en la variable dependiente, la satisfacción de la democracia es un determinante aún más significativo en la confianza que las personas tienen en las instituciones públicas (Congreso, Gobierno, presidente y partidos políticos).
+
+Según Arcaya, la importancia de la confianza en las instituciones es que es el principal mecanismo para solucionar conflictos y crear normas que moldean el comportamiento en sociedad; esto también impacta sobre la estabilidad de la democracia (2016: 7).
+
+Morales (2008) evaluó de forma empírica la relación entre la satisfacción de la democracia y la confianza institucional, utilizando los datos de la encuesta LAPOP; gracias a esto, encontró que la insatisfacción con la democracia reduce la confianza institucional principalmente en el Gobierno, en el Congreso y en los partidos políticos. 
+
+Variables de control: Como afirma Pierre Bourdieu, la percepción y valoración de las instituciones, ligadas a la confianza depositada en ellas, no pueden separarse de las estructuras sociales de las que parte y se mantiene el individuo.
+
+EFA SOBRE LA DEPENDIENTE {data-icon="fa-signal"}
+===================================== 
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+### Correlaciones entre las variables "Congreso", "Gobierno", "Partido_Politico" y "Presidente" 
+
+```{r}
+MiPais=import("MiPais.xlsx")
+```
+
+```{r}
+dontselect=c("numentre","satis_dem","creenciasS","etnia","estrato", "partido_pol", "confia", "confianza", "conf_inst")
+select=setdiff(names(MiPais),dontselect) 
+DF=MiPais[,select]
+
+# usaremos:
+library(magrittr)
+head(DF,10)%>%
+    rmarkdown::paged_table()
+``` 
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+### Gráfico EFA
+
+Podemos observar la correlación de las 4 variables en el siguiente gráfico
+```{r}
+DF$Congreso= as.numeric(DF$Congreso)
+DF$Gobierno= as.numeric(DF$Gobierno)
+DF$Partidos_Politicos= as.numeric(DF$Partidos_Politicos)
+DF$Presidente= as.numeric(DF$Presidente)
+
+library(polycor)
+
+corMatrix=polycor::hetcor(DF)$correlations
+
+round(corMatrix,2)
+
+
+library(ggcorrplot)
+
+
+ggcorrplot(corMatrix)
+```
+
+
+RESULTADOS EFA {data-icon="fa-signal"}
+===================================== 
+
+Después de los resultados del EFA, hemos reducido las dimensionalidades y hemos creado un MR1 que agrupa los resultados de las cuatro variables como instituciones públicas. 
+
+```{r}
+library(psych)
+
+
+psych::KMO(corMatrix) 
+
+
+
+cortest.bartlett(corMatrix,n=nrow(DF))$p.value>0.05
+
+
+library(matrixcalc)
+
+is.singular.matrix(corMatrix)
+
+
+fa.parallel(DF, fa = 'fa',correct = T,plot = F)
+
+
+library(GPArotation)
+
+
+resfa <- fa(DF,
+            nfactors = 1,
+            cor = 'mixed',
+            rotate = "varimax", #oblimin?
+            fm="minres")
+print(resfa$loadings)
+
+
+sort(resfa$communality)
+
+
+regresFactors=as.data.frame(resfa$scores)%>%head()
+
+MiPais$confianza_instituciones <- resfa$scores
+
+head(MiPais)
+```
+
+
+
+AJUSTES DE LAS VARIABLES {data-icon="fa-signal"}
+===================================== 
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+### Rescale de la confianza en las instituciones y dicotomización
+
+```{r}
+MiPais$confianza <- cut(
+  MiPais$conf_inst,
+  breaks = 10,                    # Dividir en 10 categorías
+  labels = 1:10,                  # Etiquetar las categorías del 1 al 10
+  include.lowest = TRUE           # Incluir el valor mínimo en la primera categoría
+)
+
+# Convertir a numérica si es necesario
+MiPais$confianza <- as.numeric(as.character(MiPais$confianza))
+
+# Verificar los primeros registros para asegurarse de que la recategorización funcionó
+head(MiPais[, c("conf_inst", "confianza")])
+```
+Dicotomización de la variable: Si el puntaje es >=7 sí confia (1) de lo contrario no confía (0)
+
+```{r}
+MiPais$confia <- ifelse(MiPais$confianza >= 7, "1", "0")
+
+head(MiPais[, c("confianza", "confia")])
+```
+
+```{r}
+PERU=import("Data Final - Dash.xlsx")
+```
+
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+CORRELACIONES {data-icon="fa-signal"}
+===================================== 
+
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+### Anova
+
+
+Tenemos 1 variable dependiente que es CONFIANZA EN LAS INSTITUCIONES, y las dos variables independientes son CATEGORICAS, CREENCIAS Y SATIS_DEM. En ese caso utilizaremos, un prueba de ANOVA para ver la diferencia de medias entre los grupos.
+
+## Satisfacción con la democracia
+
+Observamos el impacto positivo de la variable independiente en la dependiente. En otras palabras, mientras las personas más satisfechas estén con la democracia, mayor será su confianza en las instituciones. 
+
+```{r}
+# ANOVA para satisfacción con la democracia
+anova_satis_dem <- aov(confianza ~ satis_dem, data = PERU)
+summary(anova_satis_dem)
+anova_creenciasS <- aov(confianza ~ creenciasS, data = PERU)
+summary(anova_creenciasS)
+
+# Calcular las medias y errores estándar
+df_summary_satis <- PERU %>%
+  group_by(satis_dem) %>%
+  summarise(
+    mean_confianza = mean(confianza, na.rm = TRUE),
+    se_confianza = sd(confianza, na.rm = TRUE) / sqrt(n())
+  )
+
+df_summary_creencias <- PERU %>%
+  group_by(creenciasS) %>%
+  summarise(
+    mean_confianza = mean(confianza, na.rm = TRUE),
+    se_confianza = sd(confianza, na.rm = TRUE) / sqrt(n())
+  )
+
+ggplot(df_summary_satis, aes(x = satis_dem, y = mean_confianza)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_errorbar(aes(ymin = mean_confianza - se_confianza, ymax = mean_confianza + se_confianza), width = 0.2) +
+  theme_minimal() +
+  labs(title = "Media de la Confianza por Satisfacción con la Democracia",
+       x = "Satisfacción con la Democracia",
+       y = "Media de la Confianza")+scale_y_continuous(limits = c(0, max(df_summary_satis$mean_confianza + df_summary_satis$se_confianza) * 1.1))
+```
+
+
+
+
+## Creencias
+
+Si bien obtenemos el mismo resultado con las creencias de las personas: impacto positivo en la variable dependiente, hay diferencias mínimas entre las categorías. Por otro lado, sí cumple con los supuestos. 
+
+
+```{r}
+# Gráfico de barras para creencias
+ggplot(df_summary_creencias, aes(x = creenciasS, y = mean_confianza)) +
+  geom_bar(stat = "identity", fill = "pink") +
+  geom_errorbar(aes(ymin = mean_confianza - se_confianza, ymax = mean_confianza + se_confianza), width = 0.2) +
+  theme_minimal() +
+  labs(title = "Media de la Confianza por Creencias",
+       x = "Creencias",
+       y = "Media de la Confianza")+scale_y_continuous(limits = c(0, max(df_summary_creencias$mean_confianza + df_summary_creencias$se_confianza) * 1.1))
+```
+
+
+REGRESIÓN LINEAL MÚLTIPLE {data-icon="fa-signal"}
+===================================== 
+
+Lo que queremos ver en esta regresión es que tanto influyen las variables independientes en la confianza en las instituciones. Entonces tomaremos satis_dem , creenciasS, etnia, estrato, partido_pol
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+### Análisis del modelo
+
+De estos resultados, podemos concluir que sí hay un impacto global de las variables en la variable dependiente. Por otra parte, lo que es del interés del estudio, es que la variable satisfacción de la democracia, que se ha tomado como numérica, sí es significativa para determinar la variable dependiente y tiene un impacto positivo. Según el análisis de coeficientes si la satisfacción de la democracia aumenta en un punto, la confianza en las instituciones estaría aumentando en 0.8 puntos.
+
+En segundo lugar, las creencias no son significativas en el impacto que hay en la variable dependiente. Entonces, si creen que la democracia es la mejor opción de gobierno no influye en si confían o no en las instituciones del país. 
+
+
+```{r}
+# hipotesis en R
+modelo1=formula(confianza~ satis_dem + creenciasS + etnia + estrato + partido_pol)
+
+reg1=lm(modelo1,data=PERU)
+PERU=PERU[complete.cases(PERU),]
+
+seleccion=c("creenciasS","etnia","estrato",
+            "partido_pol","confia")
+PERU[,seleccion]=lapply(PERU[,seleccion],as.factor)
+
+peruStats=summary(PERU[,-1])
+peruStats
+
+reg1=lm(modelo1,data=PERU)
+summary(reg1)
+```
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+### Gráfico de los coeficientes
+
+
+Podemos observar y confirmar en este gráfico que, a diferencia de las creencias, la satisfacción de la democracia es significativa para analizar la confianza en las instituciones, ya que no está cerca al cero. 
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+```{r}
+library(ggplot2)
+library(broom)
+library(dotwhisker)
+
+model_tidy <- tidy(reg1)
+
+dwplot(model_tidy) +
+  theme_minimal() +
+  labs(title = "Coeficientes del Modelo de Regresión",
+       x = "Estimación",
+       y = "Predictor")
+```
+
+
+
+CHI-CUADRADO {data-icon="fa-signal"}
+===================================== 
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+Dicotomizamos las variables
+
+```{r}
+
+library(dplyr)
+
+# Suponiendo que tu data frame se llama peru_data
+PERU <- PERU %>%
+  mutate(satisdem_dic = if_else(satis_dem %in% c(3, 4), 1, 0))
+
+table(PERU$satisdem_dic)
+PERU$satisdem_dic = factor(PERU$satisdem_dic, levels =c(0:1), labels = c('No está satisfecho', 'Está satisfecho'))
+
+table(PERU$satisdem_dic)
+
+```
+
+
+
+```{r}
+table(PERU$estrato)
+PERU <- PERU %>%
+  mutate(estrato_dic = if_else(estrato %in% c(1,2), 1, 0))
+table(PERU$estrato_dic)
+```
+
+
+
+```{r}
+table(PERU$creenciasS)
+PERU <- PERU %>%
+  mutate(creencias_dic = if_else(creenciasS %in% c(1), 1, 0))
+table(PERU$creencias_dic)
+PERU$creencias_dic = factor(PERU$creencias_dic, levels =c(0:1), labels = c('No cree', 'Sí cree'))
+```
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+### Asociación por chi-cuadrado
+
+Antes dicotomizamos las variables de satisfacción de la democracia, estrato y creencias. Los resultados de la asociación del chi cuadrado son diferentes a los que hemos estado teniendo hasta ahora. Nos dice que tanto la satisfacción de la democracia como las creencias tienen una asociación con la confianza en las instituciones de las personas. 
+
+```{r}
+
+PERU$confia <- as.factor(PERU$confia)
+PERU$satisdem_dic <- as.factor(PERU$satisdem_dic)
+PERU$creencias_dic <- as.factor(PERU$creencias_dic)
+
+
+tabla_satisfaccion <- table(PERU$satisdem_dic, PERU$confia)
+chi_satisfaccion <- chisq.test(tabla_satisfaccion)
+
+
+tabla_creencias <- table(PERU$creencias_dic, PERU$confia)
+chi_creencias <- chisq.test(tabla_creencias)
+
+```
+
+```{r}
+
+print(chi_satisfaccion)
+
+```
+
+```{r}
+# Resultados para creencias
+print(chi_creencias)
+```
+
+GRÁFICOS CHI-CUADRADO {data-icon="fa-signal"}
+===================================== 
+
+Entendemos de los gráficos que hay más probabilidad de que uno confíe en las instituciones si tienen mayor satisfacción con la democracia y tiene mayores creencias de que la democracia es el mejor modelo de gobierno. 
+
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+### Satisfacción de la democracia
+
+```{r}
+# Convertir tabla de contingencia en un dataframe
+df_satis_dem <- as.data.frame(tabla_satisfaccion)
+colnames(df_satis_dem) <- c("Satisfaccion", "Confianza", "Frecuencia")
+
+# Gráfico de barras apiladas
+ggplot(df_satis_dem, aes(x = Satisfaccion, y = Frecuencia, fill = Confianza)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Distribución de Confianza por Satisfacción con la Democracia",
+       x = "Satisfacción con la Democracia",
+       y = "Frecuencia") +
+  scale_fill_manual(values = c("red", "skyblue")) # Ajustar colores si es necesario
+```
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+### Creencias 
+```{r}
+# Convertir tabla de contingencia en un dataframe
+df_creencias <- as.data.frame(tabla_creencias)
+colnames(df_creencias) <- c("Creencias", "Confianza", "Frecuencia")
+
+# Gráfico de barras apiladas
+ggplot(df_creencias, aes(x = Creencias, y = Frecuencia, fill = Confianza)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Distribución de Confianza por Creencias",
+       x = "Creencias",
+       y = "Frecuencia") +
+  scale_fill_manual(values = c("red", "skyblue")) # Ajustar colores si es necesario
+```
+
+REGRESIÓN LOGÍSTICA {data-icon="fa-signal"}
+===================================== 
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+### Análisis del modelo
+
+```{r}
+library(car)
+modelo <- glm(confia ~ satisdem_dic + creencias_dic + estrato_dic + partido_pol + etnia, 
+              data = PERU, family = binomial)
+
+# Resumen del modelo
+summary(modelo)
+```
+```{r}
+exp(coef(modelo))
+```
+
+```{r}
+dep=PERU$confia # a la fila
+ind=PERU$etnia # a la columna
+
+volsexTable=table(dep,ind,dnn = c('confia','etnia'))
+library(kableExtra)
+### suma por fila y columna
+addmargins(volsexTable)%>%
+    kable(caption = "Tabla de Contingencia: 'Confía' y 'Etnia'")%>%
+    kableExtra::kable_styling(full_width = F)
+
+```
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+### Efectos marginales
+
+```{r}
+library(margins)
+library(kableExtra)
+marginalsData=summary(margins(modelo))
+marginalsData%>% kable(caption = "Efectos Marginales Promedio (AME)") %>%kableExtra::kable_styling(full_width = T)
+```
+
+
+GRÁFICO LOG {data-icon="fa-signal"}
+===================================== 
+
+### Gráfico
+
+Estos resultados resultan interesantes para el estudio, ya que en la regresión logística las creencias sobre la democracia sí son significativas para determinar la probabilidad de la confianza en las instituciones, junto a la satisfacción con la democracia. Lo curioso es que las creencias tendrían una relación inversa, es decir, las personas que más creen en la democracia, tendrían menos probabilidad de confiar en las instituciones. 
+
+Row {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+```{r}
+library(ggplot2)
+base= ggplot(marginalsData,aes(x=factor, y=AME)) + geom_point()
+base +  geom_errorbar(aes(ymin=lower, ymax=upper))
+```
+
+CONCLUSIÓN {data-icon="fa-signal"}
+===================================== 
+
+Podemos concluir en que ambos modelos han arrojado diferentes resultados hacia nuestra hipótesis: la satisfacción de la democracia y las creencias son factores determinantes de la confianza en las instituciones de los encuestados. 
+
+La regresión lineal múltiple concluye en que las creencias no influyen en la confianza que las personas tienen en las instituciones. Lo que tiene influencia significativa es cuán satisfechos están con la democracia. 
+
+La regresión logística, en cambio, concluye en que ambas variables independientes son significativas en la probabilidad de que uno confíe más o menos en las instituciones. Resulta curioso que la variable de creencias tenga un impacto negativo o inverso, ya que estaría diciendo que mientras las personas creen más en la democracia, menos probabilidad de que confíen en las instituciones tienen. 
+
+Este resultado implica que podríamos afirmar que la satisfacción de la democracia podría determinar la confianza que las personas tienen en las instituciones peruanas. Sin embargo, en base a los resultados, se crea una incógnita sobre la influencia y significancia de las creencias sobre la democracia. 
